@@ -58,12 +58,14 @@ $env:JWT_SECRET = 'replace-with-the-same-random-secret-of-at-least-32-characters
 $env:SPRING_DATASOURCE_URL = 'jdbc:mysql://localhost:3306/plazoleta_restaurantes'
 $env:SPRING_DATASOURCE_USERNAME = '...'
 $env:SPRING_DATASOURCE_PASSWORD = '...'
-$env:SPRING_DATASOURCE_DRIVER = 'com.mysql.cj.jdbc.Driver'
-$env:SPRING_JPA_DDL_AUTO = 'validate'
+$env:SPRING_PROFILES_ACTIVE = 'prod'
+$env:USERS_ROLE_URL_TEMPLATE = 'http://localhost:8081/internal/usuarios/{usuarioId}/roles/{rol}'
 .\mvnw.cmd spring-boot:run
 ```
 
-Other settings: `SERVER_PORT` (default `8082`), `USERS_ROLE_URL_TEMPLATE`, `H2_CONSOLE_ENABLED` (default `false`), and standard datasource variables. Use secrets from a secret manager outside local development. Production schema migration tooling and deployment configuration are not included.
+Create the `plazoleta_restaurantes` database before starting. The `prod` profile requires MySQL credentials and `JWT_SECRET`, runs Flyway migrations from `src/main/resources/db/migration`, validates the schema with Hibernate, and disables H2. Keep the database password and shared JWT secret in a deployment secret manager, never in source control. For local development, H2 remains the default and Flyway applies the same schema migrations.
+
+Other settings: `SERVER_PORT` (default `8082`), `USERS_ROLE_URL_TEMPLATE`, `H2_CONSOLE_ENABLED` (default `false`), and standard datasource variables.
 
 ## Tests
 
@@ -73,6 +75,8 @@ Other settings: `SERVER_PORT` (default `8082`), `USERS_ROLE_URL_TEMPLATE`, `H2_C
 
 JUnit 5 / Mockito unit tests cover restaurant validation and forwarded owner-role checks, dish ownership and field-preserving updates/status changes, and pagination. Spring Boot/H2 + MockMvc tests exercise authentication and role protection, request validation, database-backed restaurant sorting/public fields, restaurant creation, default-active dish creation, and the protected HU06 ownership lookup.
 
+GitHub Actions runs this verification for pushes and pull requests. The cross-service HTTP smoke test, including HU09, lives in the user-service repository and runs in its CI workflow.
+
 ## Architecture
 
 - `domain`: restaurant/dish records, business exceptions and persistence/user-service ports; does not depend on infrastructure.
@@ -80,4 +84,4 @@ JUnit 5 / Mockito unit tests cover restaurant validation and forwarded owner-rol
 - `infrastructure/input`: validated REST DTOs, controllers, MapStruct request mapping, security and error translation.
 - `infrastructure/output`: JPA entities/adapters and the configurable HTTP user-role client.
 
-MySQL is the runtime production driver; H2 provides local/test persistence. HU10 (dish listing) and all later challenge stories, user registration/authentication issuance, migrations, deployment and other microservices are not implemented here.
+MySQL is the runtime production driver; H2 provides local/test persistence. HU10 (dish listing) and all later challenge stories, user registration/authentication issuance, production secret provisioning, deployment and other microservices are not implemented here.
